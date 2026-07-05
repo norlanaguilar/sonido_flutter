@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io'; // <-- Añadido para discriminar por Sistema Operativo
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:path_provider/path_provider.dart'; // <-- Añadido para leer carpetas nativas
 import '../models/track.dart';
 import '../models/lyric_line.dart';
 import '../services/audio_service.dart';
@@ -38,6 +40,11 @@ class PlayerProvider extends ChangeNotifier {
     _durationSub = _audio.durationStream.listen(_onDuration);
     _stateSub = _audio.playerStateStream.listen(_onPlayerState);
     _indexSub = _audio.currentIndexStream.listen(_onIndex);
+    
+    // Si inicia en iOS, escanea la carpeta de forma automática de inmediato
+    if (Platform.isIOS) {
+      scanAndLoadIOSTracks();
+    }
   }
 
   // ── Getters ──────────────────────────────────────────────────────────────
@@ -55,7 +62,36 @@ class PlayerProvider extends ChangeNotifier {
   LyricsState get lyricsState => _lyricsState;
   int get currentLyricIndex => _currentLyricIndex;
 
-  // ── File picking ─────────────────────────────────────────────────────────
+  // ── Carga Automática exclusiva para iOS ──────────────────────────────────
+  Future<void> scanAndLoadIOSTracks() async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final entities = directory.listSync();
+      
+      _queue.clear(); // Limpiamos cola vieja para evitar duplicados al reescanear
+
+      for (final entity in entities) {
+        if (entity is File) {
+          final path = entity.path.toLowerCase();
+          // Filtramos formatos de música soportados
+          if (path.endsWith('.mp3') || path.endsWith('.m4a') || path.endsWith('.wav')) {
+            final track = Track.fromPath(entity.path);
+            _queue.add(track);
+          }
+        }
+      }
+
+      notifyListeners();
+
+      if (_queue.isNotEmpty) {
+        await _loadQueue(initialIndex: 0);
+      }
+    } catch (e) {
+      debugPrint("Error escaneando pistas locales en iOS: $e");
+    }
+  }
+
+  // ── File picking (Mantenido intacto para Android) ─────────────────────────
   Future<void> pickAndAddFiles() async {
     final paths = await _filePicker.pickAudioFiles();
     if (paths.isEmpty) return;
@@ -233,7 +269,6 @@ class PlayerProvider extends ChangeNotifier {
     _position = pos;
     final prevIdx = _currentLyricIndex;
     _updateLyricIndex(pos);
-    // Only notify if lyric changed (position updates are very frequent)
     if (_currentLyricIndex != prevIdx) {
       notifyListeners();
     }

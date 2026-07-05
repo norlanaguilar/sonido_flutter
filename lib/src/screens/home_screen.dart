@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../widgets/now_playing_view.dart';
 import '../widgets/karaoke_view.dart';
 import '../widgets/track_tile.dart';
+import 'dart:io';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,18 +38,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       appBar: AppBar(
         backgroundColor: AppColors.background,
         titleSpacing: 20,
-        centerTitle: true, // <-- Centramos el logo horizontal
+        centerTitle: true,
         title: Image.asset(
-          'assets/images/titulo.png', // <-- Tu imagen alargada
-          height: 35,                  // Altura ideal para la AppBar sin deformarse
+          'assets/images/titulo.png',
+          height: 35,
           fit: BoxFit.contain,
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
-            tooltip: 'Agregar pistas',
-            onPressed: provider.pickAndAddFiles,
-          ),
+          // EL BOTÓN '+' DE LA BARRA SOLO SE MUESTRA EN ANDROID
+          if (Platform.isAndroid)
+            IconButton(
+              icon: const Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
+              tooltip: 'Agregar pistas',
+              onPressed: provider.pickAndAddFiles,
+            ),
           if (provider.queue.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded, size: 22, color: AppColors.textMuted),
@@ -137,20 +140,27 @@ class _LibraryTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Toca + para agregar archivos de audio',
-              style: TextStyle(
+            // MENSAJE DINÁMICO SEGÚN EL SISTEMA OPERATIVO
+            Text(
+              Platform.isAndroid
+                  ? 'Toca + para agregar archivos de audio'
+                  : 'Añade música desde la app "Archivos" de tu iPhone',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontFamily: 'Outfit',
                 fontSize: 13,
                 color: AppColors.textMuted,
               ),
             ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: provider.pickAndAddFiles,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Agregar pistas'),
-            ),
+            // EL BOTÓN GRANDE CENTRAL SOLO SE MUESTRA EN ANDROID
+            if (Platform.isAndroid) ...[
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: provider.pickAndAddFiles,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Agregar pistas'),
+              ),
+            ],
           ],
         ),
       );
@@ -173,24 +183,26 @@ class _LibraryTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              GestureDetector(
-                onTap: provider.pickAndAddFiles,
-                child: const Row(
-                  children: [
-                    Icon(Icons.add_circle_outline_rounded, size: 16, color: AppColors.accent),
-                    SizedBox(width: 4),
-                    Text(
-                      'AGREGAR MÁS',
-                      style: TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontSize: 10,
-                        color: AppColors.accent,
-                        letterSpacing: 0.8,
+              // EL BOTÓN "AGREGAR MÁS" SOLO SE MUESTRA EN ANDROID
+              if (Platform.isAndroid)
+                GestureDetector(
+                  onTap: provider.pickAndAddFiles,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.add_circle_outline_rounded, size: 16, color: AppColors.accent),
+                      SizedBox(width: 4),
+                      Text(
+                        'AGREGAR MÁS',
+                        style: TextStyle(
+                          fontFamily: 'JetBrainsMono',
+                          fontSize: 10,
+                          color: AppColors.accent,
+                          letterSpacing: 0.8,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
         ),
