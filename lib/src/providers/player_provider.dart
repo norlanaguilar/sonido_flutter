@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io'; // <-- Discriminación por Sistema Operativo
+import 'dart:io'; // Discriminación por Sistema Operativo
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart'; // <-- Lector de carpetas nativas
+import 'package:path_provider/path_provider.dart'; // Lector de carpetas nativas
 import '../models/track.dart';
 import '../models/lyric_line.dart';
 import '../services/audio_service.dart';
@@ -62,7 +62,7 @@ class PlayerProvider extends ChangeNotifier {
   LyricsState get lyricsState => _lyricsState;
   int get currentLyricIndex => _currentLyricIndex;
 
-  // ── Carga Automática exclusiva para iOS (CORREGIDA) ──────────────────────
+  // ── Carga Automática exclusiva para iOS ──────────────────────────────────
   Future<void> scanAndLoadIOSTracks() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -99,15 +99,37 @@ class PlayerProvider extends ChangeNotifier {
     }
   }
 
-  // ── File picking (Mantenido para Android) ─────────────────────────
+  // ── File picking (Optimizado para Persistencia en Android e iOS) ─────────
   Future<void> pickAndAddFiles() async {
     final paths = await _filePicker.pickAudioFiles();
     if (paths.isEmpty) return;
 
     final wasEmpty = _queue.isEmpty;
+    final docDir = await getApplicationDocumentsDirectory();
+
     for (final path in paths) {
-      final track = Track.fromPath(path);
-      if (!_queue.contains(track)) {
+      String pathFinal = path;
+
+      // SOLUCIÓN PARA iOS: Copiar el archivo seleccionado al Sandbox local de la app
+      if (Platform.isIOS) {
+        try {
+          final origen = File(path);
+          final nombreArchivo = origen.path.split('/').last;
+          final destino = File('${docDir.path}/$nombreArchivo');
+
+          // Solo lo copiamos si no existe previamente para ahorrar almacenamiento
+          if (!await destino.exists()) {
+            await origen.copy(destino.path);
+          }
+          pathFinal = destino.path;
+        } catch (e) {
+          debugPrint("Error al persistir archivo en iOS: $e");
+        }
+      }
+
+      final track = Track.fromPath(pathFinal);
+      // Evitar duplicados exactos en la cola actual
+      if (!_queue.any((t) => t.path == pathFinal)) {
         _queue.add(track);
       }
     }
@@ -176,7 +198,6 @@ class PlayerProvider extends ChangeNotifier {
 
   Future<void> seekNext() async => _audio.seekToNext();
   Future<void> seekPrevious() async => _audio.seekToPrevious();
-
   Future<void> seekTo(Duration pos) async => _audio.seek(pos);
 
   void cycleRepeatMode() {

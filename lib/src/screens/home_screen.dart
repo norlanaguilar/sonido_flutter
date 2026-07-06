@@ -45,13 +45,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           fit: BoxFit.contain,
         ),
         actions: [
-          // EL BOTÓN '+' DE LA BARRA SOLO SE MUESTRA EN ANDROID
-          if (Platform.isAndroid)
-            IconButton(
-              icon: const Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
-              tooltip: 'Agregar pistas',
-              onPressed: provider.pickAndAddFiles,
-            ),
+          // MODIFICADO: El botón '+' ahora está disponible tanto en Android como en iOS
+          IconButton(
+            icon: const Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
+            tooltip: 'Agregar pistas',
+            onPressed: provider.pickAndAddFiles,
+          ),
           if (provider.queue.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded, size: 22, color: AppColors.textMuted),
@@ -140,27 +139,23 @@ class _LibraryTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // MENSAJE DINÁMICO SEGÚN EL SISTEMA OPERATIVO
-            Text(
-              Platform.isAndroid
-                  ? 'Toca + para agregar archivos de audio'
-                  : 'Añade música desde la app "Archivos" de tu iPhone',
+            // MODIFICADO: Texto simplificado e inclusivo para ambos sistemas
+            const Text(
+              'Toca + para agregar archivos de audio',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Outfit',
                 fontSize: 13,
                 color: AppColors.textMuted,
               ),
             ),
-            // EL BOTÓN GRANDE CENTRAL SOLO SE MUESTRA EN ANDROID
-            if (Platform.isAndroid) ...[
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: provider.pickAndAddFiles,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Agregar pistas'),
-              ),
-            ],
+            // MODIFICADO: El botón grande central ahora se renderiza de forma global
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: provider.pickAndAddFiles,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Agregar pistas'),
+            ),
           ],
         ),
       );
@@ -183,26 +178,25 @@ class _LibraryTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // EL BOTÓN "AGREGAR MÁS" SOLO SE MUESTRA EN ANDROID
-              if (Platform.isAndroid)
-                GestureDetector(
-                  onTap: provider.pickAndAddFiles,
-                  child: const Row(
-                    children: [
-                      Icon(Icons.add_circle_outline_rounded, size: 16, color: AppColors.accent),
-                      SizedBox(width: 4),
-                      Text(
-                        'AGREGAR MÁS',
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 10,
-                          color: AppColors.accent,
-                          letterSpacing: 0.8,
-                        ),
+              // MODIFICADO: El botón "AGREGAR MÁS" de la lista también se habilita en iOS
+              GestureDetector(
+                onTap: provider.pickAndAddFiles,
+                child: const Row(
+                  children: [
+                    Icon(Icons.add_circle_outline_rounded, size: 16, color: AppColors.accent),
+                    SizedBox(width: 4),
+                    Text(
+                      'AGREGAR MÁS',
+                      style: TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 10,
+                        color: AppColors.accent,
+                        letterSpacing: 0.8,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
         ),
