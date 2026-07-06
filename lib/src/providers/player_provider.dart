@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:io'; // <-- Añadido para discriminar por Sistema Operativo
+import 'dart:io'; // <-- Discriminación por Sistema Operativo
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart'; // <-- Añadido para leer carpetas nativas
+import 'package:path_provider/path_provider.dart'; // <-- Lector de carpetas nativas
 import '../models/track.dart';
 import '../models/lyric_line.dart';
 import '../services/audio_service.dart';
@@ -62,7 +62,7 @@ class PlayerProvider extends ChangeNotifier {
   LyricsState get lyricsState => _lyricsState;
   int get currentLyricIndex => _currentLyricIndex;
 
-  // ── Carga Automática exclusiva para iOS ──────────────────────────────────
+  // ── Carga Automática exclusiva para iOS (CORREGIDA) ──────────────────────
   Future<void> scanAndLoadIOSTracks() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
@@ -72,9 +72,10 @@ class PlayerProvider extends ChangeNotifier {
 
       for (final entity in entities) {
         if (entity is File) {
-          final path = entity.path.toLowerCase();
+          final path = entity.path;
+          final pathLower = path.toLowerCase();
           // Filtramos formatos de música soportados
-          if (path.endsWith('.mp3') || path.endsWith('.m4a') || path.endsWith('.wav')) {
+          if (pathLower.endsWith('.mp3') || pathLower.endsWith('.m4a') || pathLower.endsWith('.wav')) {
             final track = Track.fromPath(entity.path);
             _queue.add(track);
           }
@@ -83,15 +84,22 @@ class PlayerProvider extends ChangeNotifier {
 
       notifyListeners();
 
+      // Forzar carga directa en el reproductor nativo pasando el filtro asíncrono
       if (_queue.isNotEmpty) {
-        await _loadQueue(initialIndex: 0);
+        await _audio.setPlaylist(
+          _queue.map((t) => t.path).toList(),
+          initialIndex: 0,
+        );
+        _currentIndex = 0;
+        notifyListeners();
+        await _fetchLyricsForCurrent();
       }
     } catch (e) {
       debugPrint("Error escaneando pistas locales en iOS: $e");
     }
   }
 
-  // ── File picking (Mantenido intacto para Android) ─────────────────────────
+  // ── File picking (Mantenido para Android) ─────────────────────────
   Future<void> pickAndAddFiles() async {
     final paths = await _filePicker.pickAudioFiles();
     if (paths.isEmpty) return;
