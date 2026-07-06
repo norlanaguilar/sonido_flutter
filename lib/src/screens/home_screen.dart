@@ -7,6 +7,36 @@ import '../widgets/karaoke_view.dart';
 import '../widgets/track_tile.dart';
 import 'dart:io';
 
+// ── NUEVO: Función global para atrapar errores nativos de iOS en la UI ──
+Future<void> _safeAddFiles(BuildContext context, PlayerProvider provider) async {
+  try {
+    await provider.pickAndAddFiles();
+  } catch (error) {
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Error en iOS',
+            style: TextStyle(fontFamily: 'Outfit', color: AppColors.error),
+          ),
+          content: Text(
+            error.toString(),
+            style: const TextStyle(fontFamily: 'Outfit', color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cerrar', style: TextStyle(color: AppColors.accent)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -45,11 +75,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           fit: BoxFit.contain,
         ),
         actions: [
-          // MODIFICADO: El botón '+' ahora está disponible tanto en Android como en iOS
           IconButton(
             icon: const Icon(Icons.add_rounded, color: AppColors.accent, size: 26),
             tooltip: 'Agregar pistas',
-            onPressed: provider.pickAndAddFiles,
+            // MODIFICADO: Llama a la función segura
+            onPressed: () => _safeAddFiles(context, provider), 
           ),
           if (provider.queue.isNotEmpty)
             IconButton(
@@ -139,7 +169,6 @@ class _LibraryTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // MODIFICADO: Texto simplificado e inclusivo para ambos sistemas
             const Text(
               'Toca + para agregar archivos de audio',
               textAlign: TextAlign.center,
@@ -149,10 +178,10 @@ class _LibraryTab extends StatelessWidget {
                 color: AppColors.textMuted,
               ),
             ),
-            // MODIFICADO: El botón grande central ahora se renderiza de forma global
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: provider.pickAndAddFiles,
+              // MODIFICADO: Llama a la función segura
+              onPressed: () => _safeAddFiles(context, provider),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Agregar pistas'),
             ),
@@ -163,7 +192,6 @@ class _LibraryTab extends StatelessWidget {
 
     return Column(
       children: [
-        // Queue count header
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Row(
@@ -178,9 +206,9 @@ class _LibraryTab extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // MODIFICADO: El botón "AGREGAR MÁS" de la lista también se habilita en iOS
               GestureDetector(
-                onTap: provider.pickAndAddFiles,
+                // MODIFICADO: Llama a la función segura
+                onTap: () => _safeAddFiles(context, provider),
                 child: const Row(
                   children: [
                     Icon(Icons.add_circle_outline_rounded, size: 16, color: AppColors.accent),

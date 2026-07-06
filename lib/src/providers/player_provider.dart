@@ -66,6 +66,13 @@ class PlayerProvider extends ChangeNotifier {
   Future<void> scanAndLoadIOSTracks() async {
     try {
       final directory = await getApplicationDocumentsDirectory();
+      
+      // 🔥 NUEVO: Forzar a iOS a crear y mostrar la carpeta en "En mi iPhone"
+      final dummyFile = File('${directory.path}/inicializacion.txt');
+      if (!await dummyFile.exists()) {
+        await dummyFile.writeAsString('Carpeta de MusicHub creada con éxito. Copia tu música aquí.');
+      }
+
       final entities = directory.listSync();
       
       _queue.clear(); // Limpiamos cola vieja para evitar duplicados al reescanear
@@ -101,45 +108,51 @@ class PlayerProvider extends ChangeNotifier {
 
   // ── File picking (Optimizado para Persistencia en Android e iOS) ─────────
   Future<void> pickAndAddFiles() async {
-    final paths = await _filePicker.pickAudioFiles();
-    if (paths.isEmpty) return;
+    try {
+      final paths = await _filePicker.pickAudioFiles();
+      if (paths.isEmpty) return;
 
-    final wasEmpty = _queue.isEmpty;
-    final docDir = await getApplicationDocumentsDirectory();
+      final wasEmpty = _queue.isEmpty;
+      final docDir = await getApplicationDocumentsDirectory();
 
-    for (final path in paths) {
-      String pathFinal = path;
+      for (final path in paths) {
+        String pathFinal = path;
 
-      // SOLUCIÓN PARA iOS: Copiar el archivo seleccionado al Sandbox local de la app
-      if (Platform.isIOS) {
-        try {
-          final origen = File(path);
-          final nombreArchivo = origen.path.split('/').last;
-          final destino = File('${docDir.path}/$nombreArchivo');
+        // SOLUCIÓN PARA iOS: Copiar el archivo seleccionado al Sandbox local de la app
+        if (Platform.isIOS) {
+          try {
+            final origen = File(path);
+            final nombreArchivo = origen.path.split('/').last;
+            final destino = File('${docDir.path}/$nombreArchivo');
 
-          // Solo lo copiamos si no existe previamente para ahorrar almacenamiento
-          if (!await destino.exists()) {
-            await origen.copy(destino.path);
+            // Solo lo copiamos si no existe previamente para ahorrar almacenamiento
+            if (!await destino.exists()) {
+              await origen.copy(destino.path);
+            }
+            pathFinal = destino.path;
+          } catch (e) {
+            debugPrint("Error al persistir archivo en iOS: $e");
           }
-          pathFinal = destino.path;
-        } catch (e) {
-          debugPrint("Error al persistir archivo en iOS: $e");
+        }
+
+        final track = Track.fromPath(pathFinal);
+        // Evitar duplicados exactos en la cola actual
+        if (!_queue.any((t) => t.path == pathFinal)) {
+          _queue.add(track);
         }
       }
 
-      final track = Track.fromPath(pathFinal);
-      // Evitar duplicados exactos en la cola actual
-      if (!_queue.any((t) => t.path == pathFinal)) {
-        _queue.add(track);
+      notifyListeners();
+
+      if (wasEmpty && _queue.isNotEmpty) {
+        await _loadQueue(initialIndex: 0);
+      } else {
+        await _refreshPlaylist();
       }
-    }
-
-    notifyListeners();
-
-    if (wasEmpty && _queue.isNotEmpty) {
-      await _loadQueue(initialIndex: 0);
-    } else {
-      await _refreshPlaylist();
+    } catch (e) {
+      // 🔥 NUEVO: Atrapa cualquier error fatal del FilePicker y lo lanza a la interfaz
+      debugPrint("Error crítico en pickAndAddFiles: $e");
+      rethrow; 
     }
   }
 
